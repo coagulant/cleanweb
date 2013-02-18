@@ -10,8 +10,4 @@ script:
   - python setup.py test
   - coverage run --source=cleanweb setup.py -q nosetests
 after_script:
-  - coveralls --verbose
-
-matrix:
-  allow_failures:
-    - python: 3.3
+  - coveralls
