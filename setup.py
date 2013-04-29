@@ -1,6 +1,6 @@
 from os import path
 import codecs
-from setuptools import setup, find_packages
+from setuptools import setup
 
 
 read = lambda filepath: codecs.open(filepath, 'r', 'utf-8').read()
@@ -8,10 +8,10 @@ read = lambda filepath: codecs.open(filepath, 'r', 'utf-8').read()
 
 setup(
     name='cleanweb',
-    version='1.1',
+    version='2.0',
     author='Ilya Baryshev',
     author_email='baryshev@gmail.com',
-    packages=find_packages(exclude="tests"),
+    py_modules=['cleanweb'],
     url='https://github.com/coagulant/cleanweb',
     license='MIT',
     description="Python wrapper for cleanweb API of Yandex to fight spam.",
