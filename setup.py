@@ -17,7 +17,7 @@ setup(
     description="Python wrapper for cleanweb API of Yandex to fight spam.",
     long_description=read(path.join(path.dirname(__file__), 'README.rst')),
     install_requires=["requests>=1.0.0",],
-    tests_require=['nose', 'httpretty>=0.5.9', 'sure'],
+    tests_require=['nose', 'httpretty==0.5.9', 'sure'],
     test_suite = "nose.collector",
     classifiers = [
         'Development Status :: 4 - Beta',
