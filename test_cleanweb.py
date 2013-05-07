@@ -31,7 +31,7 @@ class Api(HttprettyCase):
     def test_raises_exception_when_instantiated_with_no_key(self):
         with pytest.raises(CleanwebError) as excinfo:
             Cleanweb()
-        assert excinfo.value.message == "Cleanweb needs API key to operate. Get it here: http://api.yandex.ru/cleanweb/form.xml"
+        assert str(excinfo.value) == "Cleanweb needs API key to operate. Get it here: http://api.yandex.ru/cleanweb/form.xml"
 
     def test_xml_error_is_handled(self):
         error_repsonse = """
@@ -41,7 +41,7 @@ class Api(HttprettyCase):
                                status=403)
         with pytest.raises(CleanwebError) as excinfo:
             Cleanweb(key='xxx').get_captcha()
-        assert excinfo.value.message == 'Provided API key not registered (key-not-registered)'
+        assert str(excinfo.value) == 'Provided API key not registered (key-not-registered)'
 
 
 class CheckSpam(HttprettyCase):

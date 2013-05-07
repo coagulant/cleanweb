@@ -1,8 +1,8 @@
+import sys
 from os import path
 import codecs
 from setuptools import setup
 from setuptools.command.test import test as TestCommand
-import sys
 
 
 read = lambda filepath: codecs.open(filepath, 'r', 'utf-8').read()
