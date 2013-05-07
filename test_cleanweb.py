@@ -1,8 +1,10 @@
 # coding: utf-8
 from __future__ import unicode_literals
 from unittest import TestCase
-import sure
+
 from httpretty import HTTPretty, PY3, parse_qs
+import pytest
+
 from cleanweb import Cleanweb, CleanwebError
 
 
@@ -21,14 +23,15 @@ class HttprettyCase(TestCase):
             qs = parse_qs(HTTPretty.last_request.body.decode('utf-8'))
         else:
             qs = dict((key, [values[0].decode('utf-8')]) for key, values in parse_qs(HTTPretty.last_request.body).items())
-        kwargs.should.be.equal(qs)
+        assert kwargs == qs
 
 
 class Api(HttprettyCase):
 
     def test_raises_exception_when_instantiated_with_no_key(self):
-        Cleanweb.when.called_with().should.throw(CleanwebError,
-            "Cleanweb needs API key to operate. Get it here: http://api.yandex.ru/cleanweb/form.xml")
+        with pytest.raises(CleanwebError) as excinfo:
+            Cleanweb()
+        assert excinfo.value.message == "Cleanweb needs API key to operate. Get it here: http://api.yandex.ru/cleanweb/form.xml"
 
     def test_xml_error_is_handled(self):
         error_repsonse = """
@@ -36,8 +39,9 @@ class Api(HttprettyCase):
         <error key="key-not-registered"><message>Provided API key not registered</message></error>"""
         HTTPretty.register_uri(HTTPretty.GET, "http://cleanweb-api.yandex.ru/1.0/get-captcha", body=error_repsonse,
                                status=403)
-        Cleanweb(key='xxx').get_captcha.when.called_with().should.throw(CleanwebError,
-            'Provided API key not registered (key-not-registered)')
+        with pytest.raises(CleanwebError) as excinfo:
+            Cleanweb(key='xxx').get_captcha()
+        assert excinfo.value.message == 'Provided API key not registered (key-not-registered)'
 
 
 class CheckSpam(HttprettyCase):
@@ -65,33 +69,32 @@ class CheckSpam(HttprettyCase):
     def test_is_not_spam(self):
         HTTPretty.register_uri(HTTPretty.POST, "http://cleanweb-api.yandex.ru/1.0/check-spam",
                                body=self.ham_response)
-        Cleanweb(key='yyy').check_spam(body='Питон').should.be.equal({
+        assert Cleanweb(key='yyy').check_spam(body='Питон') == {
             'id': '123456789abcd',
             'spam_flag': False,
             'links': []
-        })
-        HTTPretty.last_request.method.should.be.equal("POST")
+        }
+        assert HTTPretty.last_request.method == "POST"
         self.assertBodyQueryString(**{'body-plain': ['Питон']})
-        HTTPretty.last_request.should.have.property('querystring').being.equal({
-            'key': ['yyy'],
-        })
+        assert HTTPretty.last_request.querystring == {'key': ['yyy']}
 
     def test_is_spam(self):
         HTTPretty.register_uri(HTTPretty.POST, "http://cleanweb-api.yandex.ru/1.0/check-spam",
                                body=self.spam_response)
         spam_text = 'ШОК! Видео скачать без СМС! http://cnn.com http://yandex.ru'
-        Cleanweb(key='yyy').check_spam(subject=spam_text, body='123',
-                                       ip='10.178.33.2', name='Vasia', body_type='html').should.be.equal({
+        spam_or_ham = Cleanweb(key='yyy').check_spam(subject=spam_text, body='123',
+                                              ip='10.178.33.2', name='Vasia', body_type='html')
+        assert spam_or_ham == {
             'id': '123456789efgh',
             'spam_flag': True,
             'links': [('http://cnn.com', True), ('http://yandex.ru', False)]
-        })
-        HTTPretty.last_request.method.should.be.equal("POST")
+        }
+        assert HTTPretty.last_request.method == "POST"
         self.assertBodyQueryString(**{'ip': ['10.178.33.2'], 'body-html': ['123'],
                                       'subject-plain': [spam_text], 'name': ['Vasia']})
-        HTTPretty.last_request.should.have.property('querystring').being.equal({
+        assert HTTPretty.last_request.querystring == {
             'key': ['yyy'],
-        })
+        }
 
 
 class GetCaptcha(HttprettyCase):
@@ -109,23 +112,21 @@ class GetCaptcha(HttprettyCase):
     def test_can_be_obtained_without_msg_id(self):
         HTTPretty.register_uri(HTTPretty.GET, "http://cleanweb-api.yandex.ru/1.0/get-captcha",
                                body=self.valid_response)
-        Cleanweb(key='xxx').get_captcha().should.be.equal(
-            {'captcha': 'abcd12345',
-             'url': 'http://i.captcha.yandex.net/image?key=abcd12345'})
-        HTTPretty.last_request.should.have.property("querystring").being.equal({
+        assert Cleanweb(key='xxx').get_captcha() == {'captcha': 'abcd12345',
+             'url': 'http://i.captcha.yandex.net/image?key=abcd12345'}
+        assert HTTPretty.last_request.querystring == {
             "key": ["xxx"],
-        })
+        }
 
     def test_can_be_obtained_with_msg_id(self):
         HTTPretty.register_uri(HTTPretty.GET, "http://cleanweb-api.yandex.ru/1.0/get-captcha",
                                body=self.valid_response)
-        Cleanweb(key='xxx').get_captcha(id='somekindofmsgid').should.be.equal(
-            {'captcha': 'abcd12345',
-             'url': 'http://i.captcha.yandex.net/image?key=abcd12345'})
-        HTTPretty.last_request.should.have.property("querystring").being.equal({
+        Cleanweb(key='xxx').get_captcha(id='somekindofmsgid') == {'captcha': 'abcd12345',
+             'url': 'http://i.captcha.yandex.net/image?key=abcd12345'}
+        assert HTTPretty.last_request.querystring == {
             "key": ["xxx"],
             "id": ["somekindofmsgid"]
-        })
+        }
 
 
 class CheckCaptcha(HttprettyCase):
@@ -149,36 +150,36 @@ class CheckCaptcha(HttprettyCase):
         HTTPretty.register_uri(HTTPretty.GET,
                                "http://cleanweb-api.yandex.ru/1.0/check-captcha",
                                body=self.valid_response)
-        Cleanweb(key='xxx').check_captcha(captcha='abcd12345', value='48151632').should.be.true
-        HTTPretty.last_request.should.have.property("querystring").being.equal({
+        assert Cleanweb(key='xxx').check_captcha(captcha='abcd12345', value='48151632')
+        assert HTTPretty.last_request.querystring == {
             "key": ["xxx"],
             "captcha": ["abcd12345"],
             "value": ["48151632"],
-        })
+        }
 
     def test_valid_captcha_msg_is_ok(self):
         HTTPretty.register_uri(HTTPretty.GET,
                                "http://cleanweb-api.yandex.ru/1.0/check-captcha",
                                body=self.valid_response)
-        Cleanweb(key='xxx').check_captcha(id='somekindofmsgid', captcha='abcd12345', value='48151632').should.be.true
-        HTTPretty.last_request.should.have.property("querystring").being.equal({
+        assert Cleanweb(key='xxx').check_captcha(id='somekindofmsgid', captcha='abcd12345', value='48151632')
+        assert HTTPretty.last_request.querystring == {
             "key": ["xxx"],
             "captcha": ["abcd12345"],
             "value": ["48151632"],
             "id": ["somekindofmsgid"]
-        })
+        }
 
     def test_invalid_captcha(self):
         HTTPretty.register_uri(HTTPretty.GET,
                                "http://cleanweb-api.yandex.ru/1.0/check-captcha",
                                body=self.invalid_response)
-        Cleanweb(key='xxx').check_captcha(id='somekindofmsgid', captcha='abcd12345', value='000').should.be.false
-        HTTPretty.last_request.should.have.property("querystring").being.equal({
+        assert Cleanweb(key='xxx').check_captcha(id='somekindofmsgid', captcha='abcd12345', value='000') == False
+        assert HTTPretty.last_request.querystring == {
             "key": ["xxx"],
             "captcha": ["abcd12345"],
             "value": ["000"],
             "id": ["somekindofmsgid"]
-        })
+        }
 
 
 class Complain(HttprettyCase):
